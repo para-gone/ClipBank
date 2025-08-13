@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ClipBank</title>
+  <style>
+    /* ===== Synthwave Theme ===== */
+    :root {
+      --bg: #0a0612;             /* deep space */
+      --bg-grad1: #140a2a;       /* nebula */
+      --bg-grad2: #0a0612;       
+      --gridline: rgba(255,0,153,0.07);
+      --card: #120d20;           /* panel */
+      --muted: #a79ac0;          /* text-muted */
+      --text: #f5eaff;           /* text */
+      --pink: #ff4bd1;           /* neon pink */
+      --cyan: #41ffe5;           /* neon cyan */
+      --violet: #9a77ff;         /* neon violet */
+      --teal: #27a89a;           /* teal */
+      --red: #ff4b88;            /* danger */
+      --green: #32ff8a;          /* success */
+      --border: #2a1f44;         /* panel border */
+      --cols: 1;                 /* user-controlled column count */
+      --radius: 4px;             /* sharper corners */
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body { 
+      margin: 0; font-family: system-ui, sans-serif; color: var(--text);
+      background:
+        linear-gradient(180deg, var(--bg-grad1), var(--bg-grad2)),
+        radial-gradient(1200px 800px at 10% -10%, rgba(255,75,209,0.05), transparent 60%),
+        radial-gradient(900px 600px at 90% 0%, rgba(65,255,229,0.05), transparent 60%),
+        repeating-linear-gradient( to bottom, transparent 0 48px, var(--gridline) 48px 49px );
+      background-attachment: fixed, fixed, fixed, fixed;
+    }
+
+    header { position: sticky; top: 0; z-index: 10; padding: 12px; border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(20,10,42,0.9), rgba(10,6,18,0.85));
+      backdrop-filter: blur(6px);
+    }
+    h1 { margin: 0; font-size: 20px; letter-spacing: 0.5px; }
+    .sub { color: var(--muted); font-size: 13px; display: flex; gap: 10px; align-items: baseline; }
+    .version { color: #cda8ff; font-size: 11px; opacity: .85; }
+
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
+    .toolbar input[type="search"] { flex: 1 1 260px; background: #0e0a19; color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; height: 34px; }
+
+    /* Buttons — uniform size and color-coded variants */
+    .btn { appearance: none; background: #0f0a1b; color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; cursor: pointer; font-size: 13px; height: 34px; line-height: 1; display: inline-flex; align-items: center; gap: 6px; }
+    .btn:hover { border-color: #3c2a66; box-shadow: 0 0 0 1px rgba(255,75,209,0.15) inset; }
+    .btn.pink   { background: #1b0c25; border-color: #5a1e7a; }
+    .btn.cyan   { background: #0a1f22; border-color: #196e70; }
+    .btn.violet { background: #130f2a; border-color: #4030a0; }
+    .btn.teal   { background: #0f2020; border-color: #1d5a5a; }
+    .btn.red    { background: #2a0f20; border-color: #7a1e50; }
+    .btn.toggle.on { box-shadow: 0 0 0 1px rgba(65,255,229,0.25) inset; border-color: var(--teal); }
+
+    /* Column control */
+    .colwrap { display: inline-flex; align-items: center; gap: 6px; }
+    .colwrap label { font-size: 12px; color: var(--muted); }
+    #colNum { width: 64px; background: #0b0814; color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 8px; height: 34px; }
+
+    /* Tabs */
+    .tabs { display: inline-flex; gap: 6px; align-items: center; }
+    .tabselect { background: #0e0a19; color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); height: 34px; padding: 6px 8px; }
+
+    /* FULL‑WIDTH grid that uses every pixel, columns are user-defined */
+    .grid { width: 100%; margin: 14px 0 32px; padding: 0 12px; display: grid; grid-template-columns: repeat(var(--cols), minmax(240px, 1fr)); gap: 10px; }
+
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; display: flex; align-items: center; gap: 8px; min-width: 0; box-shadow: 0 8px 24px rgba(0,0,0,0.25); transition: transform .06s ease, background-color .2s ease, box-shadow .2s ease; }
+    .card:hover { border-color: #4b2d7a; transform: translateY(-1px); }
+    .drag { cursor: grab; user-select: none; color: var(--muted); }
+    .drag:active { cursor: grabbing; }
+
+    /* Inputs flex so they adapt to column width */
+    .label-input, .text-input { background: #0b0814; border: 1px solid var(--border); color: var(--text); padding: 6px 8px; border-radius: var(--radius); outline: none; min-width: 0; height: 30px; }
+    .label-input:focus, .text-input:focus { box-shadow: 0 0 0 2px rgba(255,75,209,0.15); border-color: #5a1e7a; }
+    .label-input { flex: 0 1 180px; min-width: 100px; }
+    .text-input { flex: 1 1 auto; }
+
+    .label-pill { display: none; align-items: center; gap: 6px; padding: 4px 8px; border: 1px solid #4b2d7a; border-radius: var(--radius); background: rgba(75,45,122,0.25); color: var(--text); font-size: 12px; white-space: nowrap; }
+    .label-pill:hover { border-color: var(--pink); }
+
+    .iconbtn { border: 1px solid var(--border); background: #0b0814; color: var(--text); border-radius: var(--radius); padding: 6px 10px; cursor: pointer; font-size: 12px; height: 30px; display: inline-flex; align-items: center; justify-content: center; position: relative; }
+    .iconbtn:hover { border-color: #4b2d7a; }
+    .iconbtn.copy svg, .iconbtn.ok svg { width: 20px; height: 20px; display: block; pointer-events: none; }
+    .iconbtn.ok { border-color: #1e6a45; box-shadow: 0 0 0 1px rgba(50,255,138,0.25) inset; color: var(--green); } .iconbtn.ok:hover::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); background: #0f1a14; color: var(--green); border: 1px solid #1e6a45; padding: 3px 6px; font-size: 11px; border-radius: 4px; white-space: nowrap; box-shadow: 0 6px 14px rgba(0,0,0,.35); }
+
+    /* ===== Compact Modes ===== */
+    .compact .card { padding: 6px; gap: 6px; }
+    .compact .label-input { display: none; }
+    .compact .label-pill { display: inline-flex; }
+    .compact .text-input { height: 26px; font-size: 13px; }
+    .compact .iconbtn { padding: 4px 8px; font-size: 11px; height: 26px; }
+
+    /* EZ Copy mode: purple hover + pointer; white flash on click */
+    .ezcopy .card { cursor: pointer; }
+    .ezcopy .iconbtn.copy { display: none; }
+    .ezcopy .label-input, .ezcopy .text-input { cursor: pointer; pointer-events: none; user-select: none; }
+    .ezcopy .label-pill { cursor: pointer; }
+    .ezcopy .card * { user-select: none; }
+    .ezcopy .card:hover { background-color: rgba(154,119,255,0.10); box-shadow: 0 0 0 1px rgba(154,119,255,0.35) inset, 0 0 16px rgba(154,119,255,0.15); }
+    @keyframes flashWhite { from { background-color: rgba(255,255,255,0.25); } to { background-color: transparent; } }
+    .ezcopy .card.flash { animation: flashWhite 180ms ease-out; }
+  /* Floating copy badge for EZ Copy */
+    .copy-badge { position: fixed; z-index: 9999; pointer-events: none; background: #0f1a14; color: var(--green); border: 1px solid #1e6a45; padding: 4px 8px; font-size: 12px; border-radius: 6px; opacity: 0; transform: translateY(6px); transition: opacity .15s ease, transform .15s ease; box-shadow: 0 6px 14px rgba(0,0,0,.35); }
+    .copy-badge.show { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ClipBank</h1>
+    <div class="sub">
+      <span>Quick, offline bank for clips. Auto‑saves to your browser.</span>
+      <span class="version">v2.7</span>
+    </div>
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="Search… (Press / to focus)" />
+
+      <!-- Add Clip left, between Search and Tabs -->
+      <button class="btn pink" id="addClip">＋ Add Clip</button>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <select id="tabSelect" class="tabselect" title="Choose a category">
+          <!-- populated in JS -->
+        </select>
+        <button class="btn violet" id="addTab" title="Add tab">＋ Tab</button>
+        <button class="btn violet" id="renameTab" title="Rename tab">Rename</button>
+        <button class="btn violet" id="deleteTab" title="Delete tab">Delete</button>
+      </div>
+
+      <div class="colwrap" title="Adjust number of columns">
+        <label for="colNum">Columns</label>
+        <input id="colNum" type="number" min="1" max="8" step="1" value="1" />
+      </div>
+
+      <!-- View toggles -->
+      <button class="btn cyan toggle" id="compactToggle" title="Toggle compact mode">Compact</button>
+      <button class="btn cyan toggle" id="ezCopyToggle" title="Click clip to copy">EZ Copy</button>
+
+      <!-- Actions grouped logically -->
+      <button class="btn violet" id="importJson">Import</button>
+      <button class="btn cyan" id="exportJson">Export</button>
+      <button class="btn red" id="resetDefaults" title="Reset to starter clips">Reset</button>
+      <button class="btn red" id="clearAll">Clear All</button>
+    </div>
+  </header>
+
+  <main class="grid" id="grid"></main>
+
+  <input type="file" id="filePicker" accept="application/json" hidden />
+
+  <script>
+    const COLS_KEY    = 'clipBank.v1.cols';
+    const MODE_KEY    = 'clipBank.v1.compact';
+    const MODEEZ_KEY  = 'clipBank.v1.ezcopy';
+    const TABS_KEY    = 'clipBank.v1.tabs';
+    const TABIDX_KEY  = 'clipBank.v1.activeTab';
+
+    // Data shape: { tabs: [{name, items:[{label,text}]}], active }
+    let state = {
+      tabs: [ { name: 'General', items: [] } ],
+      active: 0
+    };
+
+    const starterItems = [
+      ['Full Name',''], ['Email',''], ['Phone',''], ['Address – One‑liner',''], ['LinkedIn URL',''], ['GitHub URL','']
+    ];
+
+    function starterState(){
+      return { tabs: [ { name: 'General', items: starterItems.map(([label,text])=>({label,text})) } ], active: 0 };
+    }
+
+    function load(){
+      // migrate old storage keys (Copypasta Bank → ClipBank)
+      const oldTabs = localStorage.getItem('copypastaBank.v1.tabs');
+      const oldCols = localStorage.getItem('copypastaBank.v1.cols');
+      const oldCompact = localStorage.getItem('copypastaBank.v1.compact');
+      const oldEz = localStorage.getItem('copypastaBank.v1.ezcopy');
+
+      const rawTabs = localStorage.getItem(TABS_KEY) || oldTabs;
+      if(rawTabs){
+        try { state = JSON.parse(rawTabs); } catch { state = starterState(); }
+      } else {
+        const old = localStorage.getItem('clipboardBank.v1') || localStorage.getItem('copypastaBank.v1.items');
+        if(old){
+          try { const items = JSON.parse(old); state = { tabs: [ { name: 'General', items } ], active: 0 }; }
+          catch { state = starterState(); }
+        } else { state = starterState(); }
+      }
+      persist();
+
+      const savedCols = parseInt((localStorage.getItem(COLS_KEY) || oldCols || '1'),10); applyCols(savedCols);
+      applyCompact((localStorage.getItem(MODE_KEY) || oldCompact) === '1');
+      applyEzCopy((localStorage.getItem(MODEEZ_KEY) || oldEz) === '1');
+      populateTabs();
+    }
+
+    function persist(){ localStorage.setItem(TABS_KEY, JSON.stringify(state)); }
+
+    function currentTab(){ return state.tabs[state.active]; }
+
+    const grid = document.getElementById('grid');
+
+    function copyIconSvg(){
+      // Hollow back sheet + larger solid front sheet (no dog-ear), centered
+      return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <rect x="3.8" y="6" width="12.4" height="14" rx="2" ry="2" stroke="currentColor" fill="none" stroke-width="2" />
+        <rect x="7" y="3" width="13.2" height="15" rx="2" ry="2" fill="currentColor" />
+      </svg>`;
+    }
+    function checkIconSvg(){
+      return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M9 16.2l-3.5-3.5-1.4 1.4L9 19 20 8l-1.4-1.4z" fill="currentColor" />
+      </svg>`;
+    }
+
+    function cardTemplate(idx, {label, text}){
+      return `<div class="card" data-idx="${idx}">
+        <span class="drag" title="Drag to reorder" draggable="true">⠿</span>
+        <span class="label-pill" title="Click to rename clip">${escapeHtml(label)}</span>
+        <input class="label-input" value="${escapeHtml(label)}" placeholder="Label" />
+        <input class="text-input" value="${escapeHtml(text)}" placeholder="Plain text to copy…" />
+        <button class="iconbtn copy" title="Copy text" aria-label="Copy">${copyIconSvg()}</button>
+        <button class="iconbtn del" title="Delete" aria-label="Delete">✕</button>
+      </div>`;
+    }
+
+    function render(filter=''){
+      const items = currentTab().items;
+      const f = (filter||'').toLowerCase();
+      grid.innerHTML = items
+        .map((it,i)=>({it,i}))
+        .filter(({it})=>!f||it.label.toLowerCase().includes(f)||it.text.toLowerCase().includes(f))
+        .map(({it,i})=>cardTemplate(i,it)).join('');
+      bindEvents();
+    }
+
+    function indicateCopied(copyBtn, card){
+      if(!copyBtn) return;
+      copyBtn.classList.add('ok');
+      copyBtn.setAttribute('data-tip','Copied!');
+      copyBtn.innerHTML = checkIconSvg();
+      if(card) triggerFlash(card);
+      // Persist while hovering; on mouseleave, wait ~1s before reverting.
+      const onLeave = ()=>{
+        clearTimeout(copyBtn._revertTimeout);
+        copyBtn._revertTimeout = setTimeout(()=>{
+          copyBtn.classList.remove('ok');
+          copyBtn.innerHTML = copyIconSvg();
+          copyBtn.removeAttribute('data-tip');
+        }, 900);
+      };
+      const onEnter = ()=>{ clearTimeout(copyBtn._revertTimeout); };
+      copyBtn.removeEventListener('mouseleave', onLeave);
+      copyBtn.removeEventListener('mouseenter', onEnter);
+      copyBtn.addEventListener('mouseleave', onLeave);
+      copyBtn.addEventListener('mouseenter', onEnter);
+    }
+
+    function triggerFlash(el){
+      el.classList.remove('flash'); // restart animation
+      // force reflow to allow re-adding the class
+      void el.offsetWidth;
+      el.classList.add('flash');
+      setTimeout(()=> el.classList.remove('flash'), 220);
+    }
+
+    // reliable clipboard helper with fallback for older browsers
+    async function copyToClipboard(text){
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (err) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try { document.execCommand('copy'); } finally { document.body.removeChild(ta); }
+      }
+    }
+
+    function bindEvents(){
+      grid.querySelectorAll('.card').forEach(card=>{
+        const idx = +card.dataset.idx;
+        const labelInput = card.querySelector('.label-input');
+        const labelPill  = card.querySelector('.label-pill');
+        const textInput  = card.querySelector('.text-input');
+        const copyBtn    = card.querySelector('.copy');
+        const delBtn     = card.querySelector('.del');
+        const handle     = card.querySelector('.drag');
+
+        labelInput.addEventListener('input',()=>{ currentTab().items[idx].label = labelInput.value; labelPill.textContent = labelInput.value; persist(); });
+        labelPill.addEventListener('click', async ()=>{
+          if(document.body.classList.contains('ezcopy')){
+            await copyToClipboard(currentTab().items[idx].text);
+            indicateCopied(copyBtn, card);
+            return;
+          }
+          const next = prompt('Rename clip label:', currentTab().items[idx].label||'');
+          if(next !== null){ currentTab().items[idx].label = String(next); labelInput.value = next; labelPill.textContent = next; persist(); }
+        });
+        textInput.addEventListener('input',()=>{ currentTab().items[idx].text = textInput.value; persist(); });
+        copyBtn.addEventListener('click',async()=>{ await copyToClipboard(currentTab().items[idx].text); indicateCopied(copyBtn, card); });
+        delBtn.addEventListener('click',()=>{ if(confirm('Delete this clip?')){ currentTab().items.splice(idx,1); persist(); render(document.getElementById('search').value); } });
+
+        // Drag: only from handle to avoid interfering with text selection
+        handle.addEventListener('dragstart',(e)=>{ e.dataTransfer.setData('text/plain', idx); });
+        card.addEventListener('dragover',(e)=>{ e.preventDefault(); });
+        card.addEventListener('drop',(e)=>{ e.preventDefault(); const from=+e.dataTransfer.getData('text/plain'); const to=+card.dataset.idx; if(from!==to){ const [m]=currentTab().items.splice(from,1); currentTab().items.splice(to,0,m); persist(); render(document.getElementById('search').value); } });
+
+        // EZ copy: click anywhere on the card (including inputs) copies, except delete/drag
+        card.addEventListener('click', async (e)=>{
+          if(!document.body.classList.contains('ezcopy')) return;
+          if(e.target.closest('.del,.drag')) return;
+          await copyToClipboard(currentTab().items[idx].text);
+          triggerFlash(card);
+          showCopyBadge(e.clientX, e.clientY);
+        });
+      });
+    }
+
+    // Top-level toolbar actions that were missing after the merge
+    document.getElementById('addClip').addEventListener('click',()=>{ currentTab().items.push({label:'Custom',text:''}); persist(); render(document.getElementById('search').value); });
+
+    document.getElementById('exportJson').addEventListener('click',()=>{
+      const blob=new Blob([JSON.stringify({ state },null,2)],{type:'application/json'});
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='clipbank.json'; a.click(); URL.revokeObjectURL(a.href);
+    });
+
+    const picker=document.getElementById('filePicker');
+    document.getElementById('importJson').addEventListener('click',()=>picker.click());
+    picker.addEventListener('change',async(e)=>{
+      const file=e.target.files[0]; if(!file)return; const text=await file.text();
+      try{ const data=JSON.parse(text); if(data && data.state && Array.isArray(data.state.tabs)){ state=data.state; persist(); populateTabs(); render(document.getElementById('search').value); } else if (Array.isArray(data.items)) { // legacy
+          state = { tabs: [{ name: 'Imported', items: data.items }], active: 0 }; persist(); populateTabs(); render();
+        } else { alert('Invalid file'); }
+      }
+      catch(err){ alert('Parse error'); }
+      picker.value='';
+    });
+
+    document.getElementById('resetDefaults').addEventListener('click', ()=>{
+      if(confirm('Reset to starter clips? This replaces all tabs.')){ state = starterState(); persist(); populateTabs(); render(); }
+    });
+
+    document.getElementById('clearAll').addEventListener('click',()=>{ if(confirm('Clear all clips in this tab?')){ currentTab().items=[]; persist(); render(document.getElementById('search').value); } });
+
+    document.getElementById('search').addEventListener('input',(e)=>render(e.target.value));
+    // keyboard: / or Ctrl+K focuses search
+    window.addEventListener('keydown',(e)=>{
+      if((e.key==='/' && !e.ctrlKey && !e.metaKey) || (e.key.toLowerCase()==='k' && (e.ctrlKey||e.metaKey))){
+        const s=document.getElementById('search'); s.focus(); s.select(); e.preventDefault();
+      }
+    });
+
+    // Column control (number only, persisted)
+    const num = document.getElementById('colNum');
+    function applyCols(n){
+      const cols = Math.min(8, Math.max(1, parseInt(n||1,10)));
+      document.documentElement.style.setProperty('--cols', cols);
+      num.value = cols;
+      localStorage.setItem(COLS_KEY, String(cols));
+    }
+    num.addEventListener('input', ()=> applyCols(num.value));
+
+    // View mode toggles
+    const compactToggle = document.getElementById('compactToggle');
+    function applyCompact(on){
+      document.body.classList.toggle('compact', !!on);
+      compactToggle.classList.toggle('on', !!on);
+      compactToggle.textContent = on ? 'Compact: ON' : 'Compact: OFF';
+      localStorage.setItem(MODE_KEY, on ? '1' : '0');
+    }
+    compactToggle.addEventListener('click', ()=> applyCompact(!document.body.classList.contains('compact')));
+
+    const ezToggle = document.getElementById('ezCopyToggle');
+    function applyEzCopy(on){
+      document.body.classList.toggle('ezcopy', !!on);
+      ezToggle.classList.toggle('on', !!on);
+      ezToggle.textContent = on ? 'EZ Copy: ON' : 'EZ Copy: OFF';
+      localStorage.setItem(MODEEZ_KEY, on ? '1' : '0');
+      if(!on){ // leaving EZ Copy: ensure all copy buttons are reset visually
+        document.querySelectorAll('.iconbtn.copy').forEach(btn=>{
+          btn.classList.remove('ok');
+          btn.innerHTML = copyIconSvg();
+          btn.removeAttribute('data-tip');
+        });
+      }
+    }
+    ezToggle.addEventListener('click', ()=> applyEzCopy(!document.body.classList.contains('ezcopy')));
+
+    // Tabs logic
+    const tabSelect = document.getElementById('tabSelect');
+    function populateTabs(){
+      tabSelect.innerHTML = state.tabs.map((t,i)=>`<option value="${i}">${escapeHtml(t.name)}</option>`).join('');
+      tabSelect.value = String(state.active);
+    }
+    tabSelect.addEventListener('change', ()=>{ state.active = parseInt(tabSelect.value,10); localStorage.setItem(TABIDX_KEY, String(state.active)); render(document.getElementById('search').value); persist(); });
+
+    document.getElementById('addTab').addEventListener('click', ()=>{
+      const name = prompt('New tab name:', 'New Tab');
+      if(name){ state.tabs.push({ name, items: [] }); state.active = state.tabs.length-1; persist(); populateTabs(); render(); }
+    });
+    document.getElementById('renameTab').addEventListener('click', ()=>{
+      const curr = state.tabs[state.active];
+      const name = prompt('Rename tab:', curr.name);
+      if(name){ curr.name = name; persist(); populateTabs(); }
+    });
+    document.getElementById('deleteTab').addEventListener('click', ()=>{
+      if(state.tabs.length===1){ alert('Need at least one tab.'); return; }
+      if(confirm('Delete this tab and its clips?')){ state.tabs.splice(state.active,1); state.active = Math.max(0, state.active-1); persist(); populateTabs(); render(); }
+    });
+
+    function escapeHtml(s){ return (s+'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+
+    function showCopyBadge(x,y){
+      const b = document.createElement('div');
+      b.className = 'copy-badge';
+      b.textContent = 'Copied!';
+      document.body.appendChild(b);
+      const offset = 14;
+      b.style.left = (x + offset) + 'px';
+      b.style.top = (y + offset) + 'px';
+      requestAnimationFrame(()=> b.classList.add('show'));
+      setTimeout(()=>{ b.classList.remove('show'); setTimeout(()=> b.remove(), 120); }, 650);
+    }
+
+    // Init
+    load();
+    render();
+  </script>
+</body>
+</html>
